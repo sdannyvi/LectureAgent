@@ -10,8 +10,12 @@
 \usepackage{amsmath,amssymb,bm}
 \usepackage{booktabs}
 \usepackage{xcolor}
+\usepackage{graphicx}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning,calc,decorations.pathreplacing}
+
+% -------------------- Figure path --------------------
+\graphicspath{{../figures/jesson2020/}}
 
 % -------------------- TikZ styles --------------------
 \tikzset{
@@ -35,40 +39,17 @@
 \newcommand{\doop}{\mathrm{do}}
 
 % -------------------- Metadata --------------------
-\title[Causal Inference]{When Should a Causal Model Refuse to Answer?}
-\subtitle{Paper discussion: Jesson, Mindermann, Shalit, Gal --- NeurIPS 2020}
+\title[Causal Inference]{Identifying Causal-Effect Inference Failure\\
+       with Uncertainty-Aware Models}
+\subtitle{Jesson \quad Mindermann \quad Shalit \quad Gal \hfill NeurIPS 2020}
 \author{Dan Vilenchik}
 \institute{Ben-Gurion University of the Negev}
-\date{\today}
+\date{}
 
 \begin{document}
 
 \begin{frame}
   \titlepage
-\end{frame}
-
-% -------------------------------------------------------
-\begin{frame}{Today in 60 minutes}
-\begin{columns}
-\column{0.46\textwidth}
-\textbf{Part 1 --- Understanding the paper}
-\begin{enumerate}
-  \item The problem: CATE estimation at scale.
-  \item The insight: non-overlap = covariate shift.
-  \item The tool: Bayesian neural networks.
-  \item The result: uncertainty beats propensity trimming.
-\end{enumerate}
-
-\column{0.46\textwidth}
-\textbf{Part 2 --- Critical evaluation}
-\begin{enumerate}
-  \item Assumption audit.
-  \item What uncertainty does \emph{not} fix.
-  \item The benchmarking problem.
-  \item Comparison to classical methods.
-  \item Discussion questions.
-\end{enumerate}
-\end{columns}
 \end{frame}
 
 % =======================================================
@@ -96,9 +77,9 @@ They extrapolate silently and confidently into uncharted covariate space.
 \end{frame}
 
 % -------------------------------------------------------
-\begin{frame}{Course recap: CATE and identification}
+\begin{frame}{Course recap: CATE and the identification chain}
 
-The individual-level estimand (from our notation):
+Individual-level estimand for units with covariates $X=x$:
 \[
 \tau(x) = \E\bigl[Y(1)-Y(0) \mid X=x\bigr]
 \]
@@ -131,8 +112,8 @@ and \textbf{consistency}:
 \bigskip
 \begin{itemize}
   \item In low dimensions: checked with propensity score histograms.
-  \item In high dimensions (images, EHRs, genomics): every individual is
-        almost unique --- positivity fails somewhere for almost everyone.
+  \item In high dimensions (images, EHRs, genomics): most patients are
+        unique --- positivity fails somewhere for almost everyone.
   \item Consequence: some $\mu_1(x)$ or $\mu_0(x)$ must be
         \textbf{extrapolated}, not estimated.
   \item \alert{Standard causal neural networks do not flag when they are extrapolating.}
@@ -154,64 +135,55 @@ and \textbf{consistency}:
 in the opposite arm --- their CATE estimates are unreliable.
 
 \bigskip
-\begin{block}{The fundamental limit of trimming}
+\begin{block}{The fundamental limit}
 The propensity score captures \emph{marginal} probability $\Prob(T=1 \mid x)$.
 It does not directly tell you which arm lacks data for a specific $x$.
-As we will see, this can lead to trimming exactly the wrong units.
 \end{block}
 \end{frame}
 
 % -------------------------------------------------------
 \begin{frame}{When trimming fails: the CEMNIST story}
 
-New benchmark introduced in the paper: \textbf{causal-effect MNIST}.
-
-\bigskip
-\begin{center}
+\begin{columns}
+\column{0.44\textwidth}
+\textbf{Causal-effect MNIST} (new benchmark):\\[6pt]
 \small
-\begin{tabular}{lcccc}
+\begin{tabular}{lcc}
 \toprule
-Digit(s)   & $p(x)$ & $e(x)=\Prob(T{=}1\mid x)$ & CATE & Estimable? \\
+Digit & $e(x)$ & Estimable? \\
 \midrule
-9          & 0.50   & $1/9 \approx 0.11$         & $-1$ & \textcolor{green!60!black}{Yes --- many untreated nines} \\
-2          & 0.056  & $1.00$                     & $+1$ & \alert{No --- only treated twos} \\
-other odd  & 0.056  & $0.50$                     & $-1$ & \textcolor{green!60!black}{Yes} \\
-other even & 0.056  & $0.50$                     & $+1$ & \textcolor{green!60!black}{Yes} \\
+9 & $1/9$ & \textcolor{green!60!black}{Yes} \\
+2 & $1.0$ & \alert{No} \\
+other & $0.5$ & \textcolor{green!60!black}{Yes} \\
 \bottomrule
 \end{tabular}
-\end{center}
 
 \bigskip
-\begin{itemize}
-  \item Digit 9: low propensity ($\approx 0.11$), but plenty of untreated nines
-        $\Rightarrow$ CATE \emph{is} estimable.
-  \item Digit 2: propensity $= 1$, no untreated twos
-        $\Rightarrow$ CATE is \emph{not} estimable.
-  \item A trimmer with $\eta = 0.05$ \alert{keeps twos, removes nines} ---
-        exactly backwards.
-\end{itemize}
+\normalsize
+Digit 9: low propensity but many untreated nines $\Rightarrow$ CATE estimable.\\[4pt]
+Digit 2: propensity $=1$, no untreated twos $\Rightarrow$ CATE not estimable.
+
+\column{0.54\textwidth}
+\includegraphics[width=\textwidth,height=0.52\textheight,keepaspectratio]{fig2a_cemnist_propensity.png}
+\\\centering{\footnotesize Fig.\ 2a: propensity histogram. Peaks at left $=$ untreated nines.
+Trimmer with $\eta{=}0.05$ removes nines, keeps twos.}
+\end{columns}
 \end{frame}
 
 % -------------------------------------------------------
 \begin{frame}{Core insight: non-overlap is covariate shift}
 
-\textbf{Recall:} covariate shift = the test distribution differs from the training
-distribution.
+\textbf{Recall:} covariate shift = test distribution differs from training distribution.
 
 \bigskip
-Consider estimating $\mu_1(x) = \E[Y \mid T=1,\, X=x]$.
-The model for the $T=1$ arm is trained on data from $p(X \mid T=1)$.
+Consider the model for the $T=1$ arm, trained on $p(X \mid T=1)$.
 
-\bigskip
-\begin{block}{The reframing (Jesson et al.)}
-If $e(x) = \Prob(T=1 \mid x) \approx 0$, then by Bayes' theorem:
-\[
-p(x \mid T=1) \approx 0.
-\]
-So $x$ is \textbf{out-of-distribution} for the $T=1$ model --- a covariate shift.
+\begin{block}{Key reframing}
+If $e(x) = \Prob(T=1 \mid x) \approx 0$, then by Bayes:
+$p(x \mid T=1) \approx 0$.\\
+So $x$ is \textbf{out-of-distribution} for the $T=1$ model.
 \end{block}
 
-\bigskip
 \begin{itemize}
   \item $e(x)\approx 0$: $\mu_1(x)$ is OoD.
   \item $e(x)\approx 1$: $\mu_0(x)$ is OoD.
@@ -219,8 +191,17 @@ So $x$ is \textbf{out-of-distribution} for the $T=1$ model --- a covariate shift
 \end{itemize}
 
 \bigskip
-\textbf{Consequence:} we can address both non-overlap \emph{and} input covariate
-shift with a single tool --- epistemic uncertainty.
+\begin{center}
+\begin{tikzpicture}[node distance=2cm]
+  \node[conf]  (X) {$X$};
+  \node[treat, right=of X] (T) {$T$};
+  \node[outc,  right=of T] (Y) {$Y$};
+  \draw[arrow] (X) -- (T);
+  \draw[arrow] (X) -- (Y);
+  \draw[arrow] (T) -- (Y);
+\end{tikzpicture}\\[4pt]
+\footnotesize Both $\mu_0$ and $\mu_1$ must be estimated; positivity ensures both have data.
+\end{center}
 \end{frame}
 
 % -------------------------------------------------------
@@ -228,25 +209,42 @@ shift with a single tool --- epistemic uncertainty.
 
 \begin{columns}
 \column{0.46\textwidth}
-\begin{block}{Aleatoric uncertainty}
+\begin{block}{Aleatoric}
 Inherent noise in $Y$.\\[4pt]
-\textit{Example:} a fair coin --- even with unlimited data you cannot predict the flip.\\[4pt]
-Cannot be reduced with more observations.
+Cannot be reduced with more data.
 \end{block}
-
-\column{0.46\textwidth}
-\begin{block}{Epistemic uncertainty}
-Uncertainty due to \emph{lack of data}.\\[4pt]
-\textit{Example:} no treated units like this patient $\Rightarrow$ uncertain what $\mu_1(x)$ is.\\[4pt]
+\vspace{6pt}
+\begin{block}{Epistemic}
+Uncertainty from \emph{lack of data}.\\[4pt]
 Disappears as more relevant data arrives.
 \end{block}
+\vspace{6pt}
+We want to detect \textbf{epistemic} uncertainty in $\hat\tau(x)$.
+
+\column{0.52\textwidth}
+\includegraphics[width=\textwidth]{fig1c_cate_uncertainty.png}
+\\\centering{\footnotesize Fig.\ 1 (bottom): CATE uncertainty is high where at least one arm model lacks data.}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------------
+\begin{frame}{Figure 1: BNN functions detect non-overlap}
+
+\begin{columns}
+\column{0.48\textwidth}
+\includegraphics[width=\textwidth]{fig1a_bnn_t0.png}
+\\\centering{\footnotesize $T=0$ arm: BNN functions agree in-distribution,\\
+diverge where $p(x\mid T=0)\approx 0$ (right of shaded region).}
+
+\column{0.48\textwidth}
+\includegraphics[width=\textwidth]{fig1b_bnn_t1.png}
+\\\centering{\footnotesize $T=1$ arm: functions diverge where $p(x\mid T=1)\approx 0$\\
+(left of shaded region = low-propensity units).}
 \end{columns}
 
 \bigskip
 \begin{center}
-We want to detect \textbf{epistemic} uncertainty in
-$\hat{\tau}(x) = \hat{\mu}_1(x) - \hat{\mu}_0(x)$,\\
-and use it to decide when to withhold a recommendation.
+\textit{High variance across BNN draws = epistemic uncertainty = model says ``I don't know.''}
 \end{center}
 \end{frame}
 
@@ -259,18 +257,12 @@ Replace a single network $\mu_0(x;\,\omega_0)$ with a
 p(\omega_0 \mid \mathcal{D}) \quad \text{(posterior over weights).}
 \]
 
-Epistemic uncertainty $\approx$ variance of predictions across sampled networks:
+Epistemic uncertainty $\approx$ variance across sampled networks:
 \[
 U_0(x) = \mathrm{Var}_{\omega_0 \sim p(\omega_0\mid\mathcal{D})}
           \bigl[\mu_0(x;\,\omega_0)\bigr].
 \]
 
-\begin{itemize}
-  \item \textbf{In-distribution $x$:} all networks agree $\Rightarrow$ low variance.
-  \item \textbf{OoD $x$:} networks disagree $\Rightarrow$ high variance.
-\end{itemize}
-
-\bigskip
 \begin{block}{Practical approximation: MC Dropout (Gal \& Ghahramani, 2016)}
 Add dropout to each outcome head.
 Keep dropout \emph{on} at test time.
@@ -286,10 +278,7 @@ By the law of total variance:
 \mathrm{Var}\bigl[Y(1)-Y(0) \mid x\bigr]
 =
 \underbrace{
-  \E_\omega\!\bigl[
-    \mathrm{Var}_{Y}\bigl[Y(1){-}Y(0)\mid
-      \mu_{\omega_1}(x),\mu_{\omega_0}(x)\bigr]
-  \bigr]
+  \E_\omega\!\bigl[\mathrm{Var}_{Y}[\cdots]\bigr]
 }_{\text{aleatoric}}
 +
 \underbrace{
@@ -297,16 +286,16 @@ By the law of total variance:
 }_{\text{epistemic in }\hat\tau(x)}
 \]
 
-\bigskip
 The paper uses the epistemic term as its uncertainty signal:
 \[
-U(x) \;=\; \mathrm{Var}_\omega\bigl[\hat\tau(x)\bigr]
-      \;=\; \mathrm{Var}_\omega\bigl[\mu_{\omega_1}(x) - \mu_{\omega_0}(x)\bigr].
+U(x) = \mathrm{Var}_\omega\bigl[\hat\tau(x)\bigr]
+      = \mathrm{Var}_\omega\bigl[\mu_{\omega_1}(x) - \mu_{\omega_0}(x)\bigr].
 \]
 
 \begin{itemize}
   \item Estimated by sampling $\omega$ via MC Dropout at test time.
   \item $U(x)$ is large when at least one arm model is OoD at $x$.
+  \item Captures both non-overlap \emph{and} input covariate shift.
 \end{itemize}
 \end{frame}
 
@@ -315,16 +304,16 @@ U(x) \;=\; \mathrm{Var}_\omega\bigl[\hat\tau(x)\bigr]
 
 \begin{center}
 \small
-\renewcommand{\arraystretch}{1.35}
+\renewcommand{\arraystretch}{1.3}
 \begin{tabular}{lll}
 \toprule
 Model      & Key idea                                      & Bayesian extension \\
 \midrule
 T-Learner  & Fit $\mu_0$, $\mu_1$ separately               & B-TLearner \\
 TARNet     & Shared representation, separate outcome heads & BTARNet \\
-CFRNet     & TARNet + MMD regularisation for overlap       & BCFR-MMD \\
-Dragonnet  & TARNet + joint propensity prediction head     & BDragonnet \\
-CEVAE      & Latent confounders via VAE                    & BCEVAE + neg.\ sampling \\
+CFRNet     & TARNet $+$ MMD regularisation for overlap     & BCFR-MMD \\
+Dragonnet  & TARNet $+$ joint propensity prediction        & BDragonnet \\
+CEVAE      & Latent confounders via VAE                    & BCEVAE $+$ neg.\ sampling \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -332,19 +321,13 @@ CEVAE      & Latent confounders via VAE                    & BCEVAE + neg.\ samp
 \bigskip
 \textbf{Paper's recipe:} add MC Dropout to the outcome heads of any model
 $\Rightarrow$ get $U(x)$ for free, with minimal code changes.
-
-\bigskip
-\textbf{CEVAE special case:} non-overlap inputs are generated by flipping
-$t \to 1-t$ on training points (negative sampling) --- tractable because
-the OoD distribution is known.
 \end{frame}
 
 % -------------------------------------------------------
 \begin{frame}{Rejection policy: thresholding on uncertainty}
 
-\textbf{Decision rule:} given a rejection budget $r_{\mathrm{rej}}$,
-withhold recommendation for the $r_{\mathrm{rej}}$ fraction of test
-units with highest $U(x)$.
+\textbf{Decision rule:} given rejection budget $r_{\mathrm{rej}}$,
+withhold recommendation for the $r_{\mathrm{rej}}$ fraction with highest $U(x)$.
 
 \bigskip
 \begin{columns}
@@ -353,84 +336,53 @@ units with highest $U(x)$.
 \[
 \text{reject } x \;\text{ if }\; U(x) > \kappa
 \]
-\begin{itemize}
-  \item Model-based; detects non-overlap and covariate shift.
-  \item Threshold $\kappa$ set to achieve target $r_{\mathrm{rej}}$.
-\end{itemize}
+Detects non-overlap and covariate shift.
 
 \column{0.46\textwidth}
 \textbf{Propensity trimming}
 \[
 \text{reject } x \;\text{ if }\; \hat{e}(x) < \eta \;\text{ or }\; > 1{-}\eta
 \]
-\begin{itemize}
-  \item Only captures marginal probability.
-  \item Trims low-$e$ units even when their CATE is estimable (digit 9).
-\end{itemize}
+Captures marginal probability only.\\
+Trims nines, keeps twos (CEMNIST).
 \end{columns}
 
 \bigskip
-\textbf{Evaluation metric:} recommendation error rate and
-$\sqrt{\mathrm{PEHE}}$ on non-rejected subset, at fixed $r_{\mathrm{rej}}$.
+\textbf{Metric:} recommendation error rate and $\sqrt{\mathrm{PEHE}}$
+on the non-rejected subset, at fixed $r_{\mathrm{rej}}$.
 \end{frame}
 
 % -------------------------------------------------------
-\begin{frame}{Results: CEMNIST ($r_{\mathrm{rej}} = 0.50$)}
+\begin{frame}{Results: CEMNIST --- uncertainty beats propensity}
 
 \begin{center}
-\small
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lccc}
-\toprule
-Model       & Random & Propensity & \textbf{Uncertainty} \\
-\midrule
-BART        & 2.1    & 2.1        & 2.0 \\
-B-TLearner  & 0.3    & 0.2        & \textbf{0.0} \\
-BTARNet     & 0.2    & 0.2        & \textbf{0.0} \\
-BCFR-MMD   & 0.3    & 0.3        & \textbf{0.1} \\
-BDragonnet  & 0.2    & 0.2        & \textbf{0.0} \\
-BCEVAE      & 0.3    & 0.2        & \textbf{0.0} \\
-\bottomrule
-\end{tabular}\\[4pt]
-$\sqrt{\mathrm{PEHE}}$, lower is better.
+\includegraphics[width=0.68\textwidth,height=0.62\textheight,keepaspectratio]{fig2b_cemnist_errorrate.png}
+\\[2pt]
+{\footnotesize Fig.\ 2b: error rate vs.\ rejection rate on CEMNIST.
+\textbf{Green} (uncertainty) $\ll$ orange/blue (propensity) across the full range.}
 \end{center}
-
-\bigskip
-\begin{itemize}
-  \item Uncertainty policy dominates across all architectures.
-  \item Propensity policy trims nines (estimable!) instead of twos (not estimable).
-        Uncertainty correctly identifies where the model lacks data.
-\end{itemize}
 \end{frame}
 
 % -------------------------------------------------------
-\begin{frame}{Results: IHDP covariate shift and ACIC 2016}
+\begin{frame}{Results: IHDP and ACIC 2016}
 
-\textbf{Setup:} train on IHDP excluding unmarried mothers; test includes them.
+\begin{columns}
+\column{0.60\textwidth}
+\includegraphics[width=\textwidth,height=0.58\textheight,keepaspectratio]{fig3b_ihdp_covshift.png}
+\\\centering{\footnotesize Fig.\ 3b: IHDP Covariate Shift.
+Uncertainty (green) outperforms propensity across all rejection rates.}
 
-\begin{center}
+\column{0.38\textwidth}
 \small
-\renewcommand{\arraystretch}{1.3}
-\begin{tabular}{lcccccc}
-\toprule
- & \multicolumn{3}{c}{IHDP Cov.\ Shift ($r_{\mathrm{rej}}=0.50$)}
- & \multicolumn{3}{c}{ACIC 2016 ($r_{\mathrm{rej}}=0.10$)} \\
-Model       & Rand. & Prop. & \textbf{Unct.}
-            & Rand. & Prop. & \textbf{Unct.} \\
-\midrule
-BART        & 2.6 & 2.7 & \textbf{1.8} & 1.3 & 1.2 & \textbf{0.9} \\
-BTARNet     & 2.2 & 2.0 & \textbf{1.2} & 1.8 & 1.7 & \textbf{1.2} \\
-BDragonnet  & 2.4 & 2.2 & \textbf{1.3} & 1.9 & 1.8 & \textbf{1.3} \\
-\bottomrule
-\end{tabular}\\[4pt]
-$\sqrt{\mathrm{PEHE}}$, lower is better.
-\end{center}
-
-\bigskip
+Same result on:
 \begin{itemize}
-  \item Uncertainty is more data-efficient: lower error at the same rejection rate.
-  \item Result consistent across all model classes and all three benchmarks.
+  \item IHDP (no shift)
+  \item ACIC 2016
 \end{itemize}
+\medskip
+All model classes improve.\\[4pt]
+Uncertainty is \textbf{more data-efficient}: lower error at the same rejection rate.
+\end{columns}
 \end{frame}
 
 % -------------------------------------------------------
@@ -439,7 +391,7 @@ $\sqrt{\mathrm{PEHE}}$, lower is better.
 \begin{block}{What Jesson et al.\ (2020) show}
 \begin{enumerate}
   \item Non-overlap $=$ covariate shift for one outcome model.
-  \item Epistemic uncertainty in BNNs detects this --- and detects
+  \item Epistemic uncertainty in BNNs detects this, and detects
         input covariate shift as a bonus.
   \item MC Dropout is a cheap, practical approximation.
   \item Uncertainty-based rejection outperforms propensity trimming,
@@ -461,25 +413,25 @@ $\sqrt{\mathrm{PEHE}}$, lower is better.
 \begin{frame}{Assumption audit}
 
 \begin{center}
-\renewcommand{\arraystretch}{1.5}
+\renewcommand{\arraystretch}{1.3}
 \small
-\begin{tabular}{p{5.5cm}p{2.5cm}p{4cm}}
+\begin{tabular}{p{5.5cm}p{2.8cm}p{3.5cm}}
 \toprule
 Assumption & Paper status & Notes \\
 \midrule
 Unconfoundedness:\\
 $(Y(1),Y(0))\indep T\mid X$
   & \alert{Assumed, untested}
-  & Foundation of all CATE identification \\
+  & Foundation of all CATE claims \\
 SUTVA / consistency
   & \alert{Assumed, untested}
-  & Standard in this literature \\
+  & Standard in literature \\
 Positivity $0 < e(x) < 1$
   & \textcolor{green!60!black}{Relaxed}
   & The paper's contribution \\
 Correct model class
   & \alert{Assumed}
-  & NN may misspecify $\mu_t(x)$ \\
+  & NN may misspecify $\mu_t$ \\
 i.i.d.\ training data
   & \alert{Assumed}
   & Violated under deployment shift \\
@@ -488,23 +440,18 @@ i.i.d.\ training data
 \end{center}
 
 \bigskip
-\begin{alertblock}{Bottom line}
-The paper relaxes positivity. It inherits all other classical assumptions intact,
-and tests none of them empirically.
+\begin{alertblock}{}
+The paper relaxes positivity. It inherits all other classical assumptions intact.
 \end{alertblock}
 \end{frame}
 
 % -------------------------------------------------------
 \begin{frame}{The unconfoundedness blindspot}
 
-The paper's method tells you \textbf{when the model is uncertain}.\\
+The method tells you \textbf{when the model is uncertain}.
 It does not tell you \textbf{whether the model is biased}.
 
 \bigskip
-\[
-\hat\tau(x) = \hat\mu_1(x) - \hat\mu_0(x)
-\]
-
 If unconfoundedness fails --- a hidden $U$ confounds both $T$ and $Y$:
 
 \begin{center}
@@ -522,10 +469,13 @@ If unconfoundedness fails --- a hidden $U$ confounds both $T$ and $Y$:
 \end{center}
 
 \begin{itemize}
-  \item $\hat\mu_1(x)$ and $\hat\mu_0(x)$ absorb the confounding signal.
-  \item Their difference $\hat\tau(x)$ is biased.
+  \item $\hat\mu_1(x)$ and $\hat\mu_0(x)$ both absorb the confounding signal.
   \item \alert{$U(x) = \mathrm{Var}_\omega[\hat\tau(x)]$ can be small even when bias is large.}
 \end{itemize}
+
+\begin{block}{}
+A Bayesian causal model can be \emph{confidently wrong} under hidden confounding.
+\end{block}
 \end{frame}
 
 % -------------------------------------------------------
@@ -533,51 +483,47 @@ If unconfoundedness fails --- a hidden $U$ confounds both $T$ and $Y$:
 
 \begin{center}
 \renewcommand{\arraystretch}{1.8}
-\begin{tabular}{r|p{4.5cm}p{4.5cm}}
+\begin{tabular}{r|p{4.6cm}p{4.6cm}}
  & \textbf{Low bias} & \textbf{High bias (hidden confounding)} \\
 \hline
 \textbf{High $U(x)$}
   & \textcolor{green!60!black}{Reject $\Rightarrow$ safe.}
-    Paper detects this.
-  & \textcolor{green!60!black}{Reject $\Rightarrow$ safe (by luck).}
-    Paper detects this too, but for the wrong reason. \\
+  & \textcolor{green!60!black}{Reject $\Rightarrow$ safe (by luck).} \\
 \hline
 \textbf{Low $U(x)$}
   & \textcolor{green!60!black}{Recommend $\Rightarrow$ safe.}
   & \alert{Recommend $\Rightarrow$ confidently wrong.}
-    \textbf{The paper's blind spot.} \\
+    \textbf{Blind spot.} \\
 \end{tabular}
 \end{center}
 
 \bigskip
-A Bayesian causal model can be \emph{confident and wrong} if the data is
-confounded --- not just if overlap is violated.
+The paper operates in the left column and top row.\\
+The bottom-right cell is untouched.
 \end{frame}
 
 % -------------------------------------------------------
 \begin{frame}{What about sensitivity analysis?}
 
-Classical causal inference addresses hidden confounding directly:
+Classical tools address hidden confounding directly:
 
 \begin{itemize}
-  \item \textbf{Rosenbaum bounds:} how large must a hidden $U$ be to
+  \item \textbf{Rosenbaum bounds:} how large must hidden $U$ be to
         overturn the conclusion?
-  \item \textbf{E-values:} minimum association strength of a confounder
-        to explain away the estimated effect.
+  \item \textbf{E-values:} minimum confounder strength to explain away the effect.
   \item \textbf{Random common cause refuters} (DoWhy): add a synthetic
         unobserved confounder; check if the estimate changes.
 \end{itemize}
 
 \bigskip
 \begin{alertblock}{The paper has no sensitivity analysis.}
-It tells us \emph{when} to trust a CATE estimate (in-distribution, overlap region).
+It tells us \emph{when} to trust a CATE estimate (overlap, in-distribution).
 It does not tell us \emph{how robust} the estimate is to hidden confounding.
 \end{alertblock}
 
 \bigskip
-These are \textbf{orthogonal questions}.
-Uncertainty quantification and sensitivity analysis both belong in a complete
-causal inference pipeline. This paper provides one, not both.
+Uncertainty quantification and sensitivity analysis are \textbf{orthogonal}.
+A complete pipeline needs both.
 \end{frame}
 
 % -------------------------------------------------------
@@ -586,25 +532,21 @@ causal inference pipeline. This paper provides one, not both.
 All experiments use \textbf{semi-synthetic} datasets:
 
 \begin{itemize}
-  \item \textbf{IHDP}: real covariates from a clinical trial; synthetic outcome model.
-  \item \textbf{ACIC 2016}: synthetic data from a methods competition; known DGP.
-  \item \textbf{CEMNIST}: MNIST digits; synthetic treatment and outcome assignment.
+  \item \textbf{IHDP}: real covariates from a clinical trial; synthetic outcomes.
+  \item \textbf{ACIC 2016}: synthetic competition data; known ground truth.
+  \item \textbf{CEMNIST}: MNIST digits; synthetic treatment and outcomes.
 \end{itemize}
 
 \bigskip
-In semi-synthetic data, the true CATE is \textbf{known by construction}
---- that is why $\sqrt{\mathrm{PEHE}}$ can be computed.
+In semi-synthetic data, true CATE is known by construction
+$\Rightarrow$ $\sqrt{\mathrm{PEHE}}$ is computable.
 
 \bigskip
 \begin{alertblock}{In real-world observational data}
 $Y_i(0)$ for treated units is \textbf{never observed}.\\
 $\sqrt{\mathrm{PEHE}}$ is \textbf{uncomputable}.\\
-We cannot verify the paper's claims in deployment.
+The paper's main metric cannot be verified in deployment.
 \end{alertblock}
-
-\bigskip
-This is not a flaw unique to this paper --- it is the fundamental evaluation
-problem in all individual-level causal effect estimation.
 \end{frame}
 
 % -------------------------------------------------------
@@ -617,27 +559,13 @@ problem in all individual-level causal effect estimation.
 \toprule
  & \textbf{Propensity trimming} & \textbf{Uncertainty rejection} \\
 \midrule
-Detects non-overlap
-  & Yes, via $\hat e(x)$
-  & Yes, more precisely \\
-Handles covariate shift
-  & No
-  & Yes \\
-Handles hidden confounding
-  & No
-  & No \\
-Sensitivity analysis
-  & Via Rosenbaum bounds / E-values
-  & None \\
-Computationally cheap
-  & Yes
-  & No --- requires BNN training \\
-Principled threshold
-  & Yes (Caliendo \& Kopeinig)
-  & No principled rule given \\
-Verifiable on real data
-  & Yes (no CATE ground truth needed)
-  & Yes, but performance unverifiable \\
+Detects non-overlap & Yes, via $\hat e(x)$ & Yes, more precisely \\
+Handles covariate shift & No & Yes \\
+Handles hidden confounding & No & No \\
+Sensitivity analysis & Rosenbaum / E-values & None \\
+Computationally cheap & Yes & No (BNN training) \\
+Principled threshold & Caliendo \& Kopeinig & No principled rule \\
+Verifiable on real data & Yes & Yes, but $\sqrt{\mathrm{PEHE}}$ uncomputable \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -648,26 +576,26 @@ Verifiable on real data
 
 \begin{enumerate}
   \item \textbf{Elegant reframing.}
-        Non-overlap = covariate shift for one arm.
-        This is clean, theoretically well-motivated, and opens a new toolkit.
+        Non-overlap $=$ covariate shift for one arm.
+        Opens a toolkit (BNNs, OoD detection) not previously applied here.
 
   \item \textbf{Practical method.}
         MC Dropout adds uncertainty to any neural causal model
         with minimal engineering cost.
 
   \item \textbf{New benchmark.}
-        CEMNIST exposes a concrete, reproducible failure mode of
-        propensity-based trimming in high-dimensional data.
+        CEMNIST exposes a concrete failure mode of propensity trimming
+        in high-dimensional, reproducible settings.
 
   \item \textbf{Better rejection.}
-        Outperforms propensity trimming consistently across three
-        benchmarks and five model architectures.
+        Outperforms propensity trimming on IHDP, ACIC, and CEMNIST
+        across five model architectures.
 \end{enumerate}
 
 \bigskip
 \begin{block}{What it does not contribute}
-A solution to hidden confounding, a sensitivity analysis, or any mechanism
-to validate CATE estimates on real-world data where ground truth is unavailable.
+A solution to hidden confounding, a sensitivity analysis, or a way to
+validate CATE estimates where ground truth is unavailable.
 \end{block}
 \end{frame}
 
@@ -678,23 +606,20 @@ to validate CATE estimates on real-world data where ground truth is unavailable.
 
   \item \textbf{Uncertainty and confounding.}
         The paper assumes unconfoundedness throughout.
-        If there are hidden confounders, can high epistemic uncertainty $U(x)$
-        protect you? What would need to change in the framework to also catch
-        confounding bias, not just data sparsity?
+        If there are hidden confounders, can high $U(x)$ protect you?
+        What would need to change to also catch confounding bias?
 
   \bigskip
   \item \textbf{Real-world validation.}
-        The paper shows uncertainty beats trimming on IHDP and CEMNIST --- both
-        semi-synthetic.
-        What experiment, using only observational data with no known ground truth,
-        would convince you this result holds in a clinical deployment?
+        The results are on semi-synthetic data.
+        What experiment --- using only observational data without known CATE ---
+        would convince you this holds in clinical practice?
 
   \bigskip
   \item \textbf{Redundancy with CFRNet.}
-        CFRNet already penalises for overlap violations via MMD regularisation.
-        Does adding MC Dropout on top give something genuinely new,
+        CFRNet already penalises for overlap via MMD regularisation.
+        Does MC Dropout on top give something genuinely new,
         or is it partially redundant?
-        What does each mechanism address, precisely?
 
 \end{enumerate}
 \end{frame}
@@ -706,26 +631,22 @@ to validate CATE estimates on real-world data where ground truth is unavailable.
   \setcounter{enumi}{3}
 
   \item \textbf{What has the model contributed?}
-        Suppose you run the paper's method on a new patient and get
-        very high $U(x)$.
+        You run the method and get high $U(x)$ for a patient.
         You withhold the recommendation and defer to a clinician.
-        What has the causal model actually contributed to the decision?
-        Is detecting uncertainty enough to be useful? What else would you need?
+        What has the causal model actually contributed?
+        Is detecting uncertainty enough?
 
   \bigskip
   \item \textbf{Uncertainty about what, exactly?}
-        The paper estimates $U(x) = \mathrm{Var}_\omega[\hat\tau(x)]$
-        --- variance across BNN draws.
-        Is this the same as uncertainty about the true causal effect
-        $Y(1)-Y(0)$?
-        What components of total uncertainty are missing from $U(x)$?
-        (Think: model misspecification, hidden confounders, estimation noise.)
+        The paper estimates $U(x) = \mathrm{Var}_\omega[\hat\tau(x)]$.
+        Is this the same as uncertainty about the true causal effect $Y(1)-Y(0)$?
+        What components of total uncertainty are missing?
 
 \end{enumerate}
 \end{frame}
 
 % -------------------------------------------------------
-\begin{frame}{Final take-away}
+\begin{frame}{Take-away}
 
 \[
 U(x) = \mathrm{Var}_\omega\bigl[\hat\mu_{\omega_1}(x) - \hat\mu_{\omega_0}(x)\bigr]
@@ -733,18 +654,16 @@ U(x) = \mathrm{Var}_\omega\bigl[\hat\mu_{\omega_1}(x) - \hat\mu_{\omega_0}(x)\bi
 
 \begin{itemize}
   \item \textbf{What the paper gives you:}
-        a principled, model-based signal for when to withhold a CATE estimate,
+        a principled signal for when to withhold a CATE estimate ---
         detecting non-overlap and covariate shift simultaneously.
 
   \item \textbf{What it assumes and does not question:}
-        unconfoundedness, correct model class, i.i.d.\ data, and SUTVA.
-        High $U(x)$ is not a guard against confounding bias ---
-        a model can be uncertain for the right reason and still be wrong
-        for a different reason.
+        unconfoundedness, correct model class, i.i.d.\ data.
+        High $U(x)$ is not a guard against confounding bias.
 \end{itemize}
 
 \bigskip
-\begin{block}{The deeper lesson for this course}
+\begin{block}{The deeper lesson}
 \textbf{Identification and uncertainty quantification are orthogonal.}\\
 You can know exactly how uncertain you are about the wrong estimand.\\
 Epistemic uncertainty $\neq$ robustness to assumption violations.
