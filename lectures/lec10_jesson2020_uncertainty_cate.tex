@@ -18,7 +18,7 @@
   var/.style={circle, draw, thick, minimum size=8mm, align=center},
   obs/.style={circle, draw, thick, fill=blue!8, minimum size=8mm, align=center},
   treat/.style={circle, draw, thick, fill=blue!15, minimum size=8mm, align=center},
-  out/.style={circle, draw, thick, fill=orange!20, minimum size=8mm, align=center},
+  outc/.style={circle, draw, thick, fill=orange!20, minimum size=8mm, align=center},
   conf/.style={circle, draw, thick, fill=purple!12, minimum size=8mm, align=center},
   hidden/.style={circle, draw, dashed, thick, fill=gray!10, minimum size=8mm, align=center},
   arrow/.style={-Latex, thick},
@@ -510,7 +510,7 @@ If unconfoundedness fails --- a hidden $U$ confounds both $T$ and $Y$:
 \begin{center}
 \begin{tikzpicture}[node distance=2cm]
   \node[treat] (T) {$T$};
-  \node[out, right=of T] (Y) {$Y$};
+  \node[outc, right=of T] (Y) {$Y$};
   \node[conf, above=1.2cm of T] (X) {$X$};
   \node[hidden, above right=0.8cm and 0.5cm of T] (U) {$U$};
   \draw[arrow] (T) -- (Y);

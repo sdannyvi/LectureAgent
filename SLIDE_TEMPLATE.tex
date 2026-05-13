@@ -17,7 +17,7 @@
   var/.style={circle, draw, thick, minimum size=8mm, align=center},
   obs/.style={circle, draw, thick, fill=blue!8, minimum size=8mm, align=center},
   treat/.style={circle, draw, thick, fill=blue!15, minimum size=8mm, align=center},
-  out/.style={circle, draw, thick, fill=orange!20, minimum size=8mm, align=center},
+  outc/.style={circle, draw, thick, fill=orange!20, minimum size=8mm, align=center},
   conf/.style={circle, draw, thick, fill=purple!12, minimum size=8mm, align=center},
   hidden/.style={circle, draw, dashed, thick, fill=gray!10, minimum size=8mm, align=center},
   arrow/.style={-Latex, thick},
@@ -59,7 +59,7 @@
 \begin{center}
 \begin{tikzpicture}[node distance=2.2cm]
   \node[treat] (T) {$T$};
-  \node[out, right=of T] (Y) {$Y$};
+  \node[outc, right=of T] (Y) {$Y$};
   \draw[arrow] (T) -- (Y);
 \end{tikzpicture}
 \end{center}

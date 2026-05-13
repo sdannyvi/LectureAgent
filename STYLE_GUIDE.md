@@ -86,7 +86,7 @@ Use consistent node styling (matches `SLIDE_TEMPLATE.tex` exactly):
   var/.style={circle, draw, thick, minimum size=8mm, align=center},
   obs/.style={circle, draw, thick, fill=blue!8, minimum size=8mm, align=center},
   treat/.style={circle, draw, thick, fill=blue!15, minimum size=8mm, align=center},
-  out/.style={circle, draw, thick, fill=orange!20, minimum size=8mm, align=center},
+  outc/.style={circle, draw, thick, fill=orange!20, minimum size=8mm, align=center},
   conf/.style={circle, draw, thick, fill=purple!12, minimum size=8mm, align=center},
   hidden/.style={circle, draw, dashed, thick, fill=gray!10, minimum size=8mm, align=center},
   arrow/.style={-Latex, thick},
@@ -100,7 +100,7 @@ Node style semantics:
 | Style | Colour | Use for |
 |---|---|---|
 | `treat` | blue!15 | treatment node `T` |
-| `out` | orange!20 | outcome node `Y` |
+| `outc` | orange!20 | outcome node `Y` |
 | `conf` | purple!12 | observed confounder/covariate `X` |
 | `obs` | blue!8 | generic observed variable |
 | `hidden` | dashed gray!10 | unobserved / latent variable |
