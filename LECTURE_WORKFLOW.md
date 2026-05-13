@@ -111,6 +111,32 @@ Use the TikZ styles from SLIDE_TEMPLATE.tex.
 Make treatment blue, outcome orange, confounders purple, hidden variables dashed gray.
 ```
 
+## Prompt template for turning a paper into slides
+
+Use when asked to create a lecture or discussion slot based on a reading from `readings/`.
+
+```text
+Read readings/READINGS_INDEX.md to find the entry for [PAPER FILENAME].
+Then read the paper itself.
+
+Create Beamer slides for a [X]-minute paper discussion slot in Module [N].
+
+The slides should:
+1. Start with one "motivation" frame: what problem does the paper solve and why should a
+   causal inference student care?
+2. Cover only the concepts a student needs to understand the paper's contribution —
+   do not reproduce the full paper.
+3. Use the course notation from COURSE_NOTATION.md (e.g. T, Y, X, e(X), CATE).
+4. Include one frame that connects the paper back to course fundamentals
+   (e.g. how positivity appears here, how this relates to the adjustment formula).
+5. Include one "common mistake or misconception" frame relevant to the paper.
+6. End with a "take-away" recap frame: one equation + two bullets.
+
+Do not include proofs or derivations unless they are pedagogically essential.
+Use SLIDE_TEMPLATE.tex conventions throughout.
+Save output to lectures/lecNN_paper_shortname.tex.
+```
+
 ## Quality checklist before accepting a lecture
 
 - [ ] Compiles without errors.

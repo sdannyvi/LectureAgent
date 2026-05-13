@@ -134,16 +134,26 @@ Key misconceptions:
 Main concepts:
 
 - heterogeneous treatment effects (CATE) and when they matter,
+- neural CATE estimators: T-Learner, TARNet, CFRNet/CFR-MMD, Dragonnet, CEVAE,
 - double ML / debiased ML: Neyman orthogonality and cross-fitting,
 - causal forests and honest estimation,
 - ML-based propensity score and outcome models,
+- epistemic vs. aleatoric uncertainty in CATE,
+- non-overlap as a covariate shift problem: when p(t=1|x)≈0 means μ₁(x) is OoD,
+- MC Dropout as approximate Bayesian inference for causal models,
+- rejection policies: uncertainty-based vs. propensity score trimming,
 - targeted learning (TMLE) at a conceptual level,
 - causal representation learning: when does a latent model support do-calculus?
+
+Key readings:
+
+- Jesson et al., NeurIPS 2020 — `readings/jesson2020_uncertainty_aware_cate.pdf`
 
 Key misconceptions:
 
 - “A better ML model means a better causal estimate.”
 - “Causal forests give ATE, not LATE or local effects.”
+- “Propensity score trimming is always a safe way to handle non-overlap.”
 
 ## Module 11: Putting it together
 Main concepts:
