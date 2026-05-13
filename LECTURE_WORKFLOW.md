@@ -121,16 +121,49 @@ Then read the paper itself.
 
 Create Beamer slides for a [X]-minute paper discussion slot in Module [N].
 
-The slides should:
-1. Start with one "motivation" frame: what problem does the paper solve and why should a
-   causal inference student care?
+Structure the slides in two parts.
+
+### Part 1 — Understanding the paper (roughly 2/3 of slides)
+
+1. "Motivation" frame: what problem does the paper solve and why should a causal inference
+   student care? State the gap the paper fills in one sentence.
 2. Cover only the concepts a student needs to understand the paper's contribution —
    do not reproduce the full paper.
-3. Use the course notation from COURSE_NOTATION.md (e.g. T, Y, X, e(X), CATE).
-4. Include one frame that connects the paper back to course fundamentals
-   (e.g. how positivity appears here, how this relates to the adjustment formula).
-5. Include one "common mistake or misconception" frame relevant to the paper.
-6. End with a "take-away" recap frame: one equation + two bullets.
+3. Use course notation from COURSE_NOTATION.md (T, Y, X, e(X), CATE, \indep, etc.).
+4. One frame that explicitly connects the paper back to course fundamentals:
+   which assumptions from the course does this paper rely on, relax, or reframe?
+   (e.g. positivity, unconfoundedness, SUTVA, consistency.)
+5. One "common mistake or misconception" frame relevant to the paper's method.
+
+### Part 2 — Critical evaluation (roughly 1/3 of slides)
+
+6. "Assumptions the paper makes" frame: list every causal assumption the paper relies on
+   (unconfoundedness, positivity, SUTVA, correct model specification, etc.) and state
+   explicitly whether the paper tests or justifies each one.
+7. "What the paper does not address" frame: pick 2–3 honest limitations from this list
+   and state them clearly:
+   - hidden confounding / unconfoundedness not tested on real data,
+   - sensitivity analysis absent or limited,
+   - experiments on semi-synthetic benchmarks only (IHDP, ACIC, CEMNIST) —
+     ground truth CATE is never observable in real-world data,
+   - positivity violations detected but unconfoundedness still assumed,
+   - the model may flag uncertainty correctly yet still be biased if confounding is present.
+8. "How does this compare to classical methods?" frame: contrast the paper's approach
+   with at least one classical causal inference method covered in the course
+   (e.g. IPTW trimming, Rosenbaum sensitivity bounds, matching).
+   Which problems does the paper solve better? Which does it not solve at all?
+9. "Discussion questions" frame: 3–5 pointed questions suitable for live class discussion.
+   Questions should require students to reason about assumptions, not just recall facts.
+   Examples of good question types:
+   - "The paper assumes unconfoundedness throughout. What would need to change if there
+     were hidden confounders?"
+   - "The benchmarks use semi-synthetic data. Can you trust the PEHE metric on real data?
+     Why or why not?"
+   - "When would you prefer propensity trimming over uncertainty-based rejection?"
+   - "Is epistemic uncertainty about CATE the same as uncertainty about the causal effect?
+     What is missing?"
+10. Final "Take-away" frame: one key equation from the paper in course notation + two
+    bullets: what the paper contributes and what remains open.
 
 Do not include proofs or derivations unless they are pedagogically essential.
 Use SLIDE_TEMPLATE.tex conventions throughout.
@@ -147,3 +180,11 @@ Save output to lectures/lecNN_paper_shortname.tex.
 - [ ] At least one common mistake is included.
 - [ ] TikZ graphs are readable.
 - [ ] The final recap is useful.
+
+### Additional checklist for paper-based slides
+
+- [ ] Every assumption the paper makes is listed and labelled (tested / untested).
+- [ ] At least one limitation about real-world data or unconfoundedness is stated explicitly.
+- [ ] The paper is compared to at least one classical method from the course.
+- [ ] Discussion questions require causal reasoning, not just paper recall.
+- [ ] No slide oversells the paper's conclusions beyond what identification justifies.
