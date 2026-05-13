@@ -1,0 +1,8 @@
+.DS_Store
+lectures/*.aux
+lectures/*.log
+lectures/*.out
+lectures/*.toc
+lectures/*.synctex.gz
+lectures/*.fls
+lectures/*.fdb_latexmk
