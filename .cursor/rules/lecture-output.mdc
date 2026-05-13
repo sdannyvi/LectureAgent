@@ -1,0 +1,25 @@
+---
+description: Enforces output conventions for causal inference lecture slides
+alwaysApply: true
+---
+
+# Lecture output conventions
+
+## File locations
+
+- All generated lecture `.tex` files → `lectures/` directory.
+  Name pattern: `lecNN_short_topic.tex` (e.g. `lec01_potential_outcomes.tex`).
+- Standalone TikZ figures → `figures/` directory.
+- Handouts, quizzes, grading material → `handouts/`, `quizzes/`, `grading/` (create on first use).
+
+## Always load these files before generating slides
+
+Before writing any Beamer code, read and apply:
+1. `STYLE_GUIDE.md` — frame structure, TikZ styles, macros, notation style.
+2. `COURSE_NOTATION.md` — all estimands, assumptions, LaTeX macros.
+3. `SLIDE_TEMPLATE.tex` — preamble, TikZ styles, macro definitions.
+4. `LECTURE_TOPICS.md` — check which module is being covered and its key misconceptions.
+
+## Output format
+
+Every new lecture file must begin with the preamble from `SLIDE_TEMPLATE.tex` verbatim (theme, packages, TikZ styles, macros, metadata block).
