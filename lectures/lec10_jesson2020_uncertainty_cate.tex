@@ -77,9 +77,53 @@ They extrapolate silently and confidently into uncharted covariate space.
 \end{frame}
 
 % -------------------------------------------------------
+\begin{frame}{What is a causal neural network?}
+
+\begin{columns}
+\column{0.52\textwidth}
+\textbf{Standard ML:} learn $f(x) \approx \E[Y \mid X=x]$.\\[8pt]
+
+\textbf{Causal ML:} learn \emph{two} functions simultaneously ---
+one per treatment arm:
+\[
+\mu_0(x) = \E[Y \mid X=x,\, T=0]
+\]
+\[
+\mu_1(x) = \E[Y \mid X=x,\, T=1]
+\]
+\[
+\hat\tau(x) = \mu_1(x) - \mu_0(x)
+\]
+
+\textbf{Key constraint:} for each unit we only ever observe
+\emph{one} arm ($T\cdot Y(1) + (1-T)\cdot Y(0)$).
+The other is the missing counterfactual.
+
+\column{0.44\textwidth}
+\begin{center}
+\begin{tikzpicture}[node distance=0.9cm, every node/.style={font=\small}]
+  \node[obs] (x)   at (0, 0)    {$X$};
+  \node[obs] (phi) at (0, 1.6)  {$\phi(X)$};
+  \node[above=0.2cm of phi, font=\tiny] {shared repr.};
+  \node[obs] (m0)  at (-1.8, 3.2) {$\hat\mu_0$};
+  \node[obs] (m1)  at ( 1.8, 3.2) {$\hat\mu_1$};
+  \node[note] (tau) at (0, 4.8) {$\hat\tau(x)=\hat\mu_1-\hat\mu_0$};
+  \draw[arrow] (x) -- (phi);
+  \draw[arrow] (phi) -- (m0);
+  \draw[arrow] (phi) -- (m1);
+  \draw[arrow] (m0.north) -- (tau.south west);
+  \draw[arrow] (m1.north) -- (tau.south east);
+  \node[font=\tiny, below=0.05cm of m0] {$T\!=\!0$ head};
+  \node[font=\tiny, below=0.05cm of m1] {$T\!=\!1$ head};
+\end{tikzpicture}
+\end{center}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------------
 \begin{frame}{Course recap: CATE and the identification chain}
 
-Individual-level estimand for units with covariates $X=x$:
+Individual-level causal estimand:
 \[
 \tau(x) = \E\bigl[Y(1)-Y(0) \mid X=x\bigr]
 \]
@@ -93,9 +137,9 @@ and \textbf{consistency}:
 \]
 
 \begin{itemize}
-  \item $\mu_1(x)$ requires observed \emph{treated} units near $x$.
-  \item $\mu_0(x)$ requires observed \emph{untreated} units near $x$.
-  \item Both require \textbf{positivity}: $\;0 < e(x) < 1$.
+  \item $\mu_1(x)$ is estimated from \emph{treated} training units near $x$.
+  \item $\mu_0(x)$ is estimated from \emph{untreated} training units near $x$.
+  \item Both estimates require \textbf{positivity}: $\;0 < e(x) < 1$.
 \end{itemize}
 \end{frame}
 
@@ -115,8 +159,9 @@ and \textbf{consistency}:
   \item In high dimensions (images, EHRs, genomics): most patients are
         unique --- positivity fails somewhere for almost everyone.
   \item Consequence: some $\mu_1(x)$ or $\mu_0(x)$ must be
-        \textbf{extrapolated}, not estimated.
-  \item \alert{Standard causal neural networks do not flag when they are extrapolating.}
+        \textbf{extrapolated}, not estimated from nearby data.
+  \item \alert{Standard causal neural networks extrapolate silently,
+        with no signal to the user.}
 \end{itemize}
 \end{frame}
 
@@ -127,176 +172,316 @@ and \textbf{consistency}:
   \item Estimate $\hat{e}(x) = \hat{\Prob}(T=1 \mid X=x)$.
   \item \textbf{Trim:} remove units where $\hat{e}(x) < \eta$ or
         $\hat{e}(x) > 1-\eta$.
-  \item Estimate CATE on the remaining data.
+  \item Estimate CATE only on the remaining data.
 \end{enumerate}
 
 \bigskip
-\textbf{Intuition:} units near $e(x)=0$ or $e(x)=1$ have few counterparts
-in the opposite arm --- their CATE estimates are unreliable.
+\textbf{Intuition:} units near $e(x)=0$ have almost no counterparts in the
+$T=1$ arm; units near $e(x)=1$ have almost no counterparts in the $T=0$ arm.
+Both make $\mu_1(x)$ or $\mu_0(x)$ unreliable.
 
 \bigskip
 \begin{block}{The fundamental limit}
-The propensity score captures \emph{marginal} probability $\Prob(T=1 \mid x)$.
-It does not directly tell you which arm lacks data for a specific $x$.
+The propensity $e(x)$ captures \emph{marginal} treatment probability.
+It does not directly tell you \emph{which arm} lacks data for a given $x$,
+nor by how much.
 \end{block}
 \end{frame}
 
 % -------------------------------------------------------
-\begin{frame}{When trimming fails: the CEMNIST story}
+\begin{frame}{CEMNIST: a synthetic benchmark on real images}
 
-\begin{columns}
-\column{0.44\textwidth}
-\textbf{Causal-effect MNIST} (new benchmark):\\[6pt]
-\small
-\begin{tabular}{lcc}
-\toprule
-Digit & $e(x)$ & Estimable? \\
-\midrule
-9 & $1/9$ & \textcolor{green!60!black}{Yes} \\
-2 & $1.0$ & \alert{No} \\
-other & $0.5$ & \textcolor{green!60!black}{Yes} \\
-\bottomrule
-\end{tabular}
+\textbf{CEMNIST = Causal Effect MNIST} --- introduced by the authors as a new benchmark.
 
 \bigskip
-\normalsize
-Digit 9: low propensity but many untreated nines $\Rightarrow$ CATE estimable.\\[4pt]
-Digit 2: propensity $=1$, no untreated twos $\Rightarrow$ CATE not estimable.
+\begin{columns}
+\column{0.55\textwidth}
+\begin{itemize}
+  \item \textbf{Covariates $X$:} real MNIST handwritten digit images
+        (28$\times$28 pixels, digits 0--9).
+  \item \textbf{Treatment $T$:} binary, synthetically assigned ---
+        think of it as ``received a new medication.''
+  \item \textbf{Outcome $Y$:} binary, synthetically defined ---
+        think of it as ``recovered.''
+  \item \textbf{Why synthetic?} So the true CATE is \emph{known by construction}
+        and we can evaluate estimator quality.
+\end{itemize}
 
-\column{0.54\textwidth}
-\includegraphics[width=\textwidth,height=0.52\textheight,keepaspectratio]{fig2a_cemnist_propensity.png}
-\\\centering{\footnotesize Fig.\ 2a: propensity histogram. Peaks at left $=$ untreated nines.
-Trimmer with $\eta{=}0.05$ removes nines, keeps twos.}
+\column{0.42\textwidth}
+\begin{alertblock}{This is a toy model}
+Treatment, outcome, and CATE values are \emph{not real}.\\
+The point is to create a controlled, high-dimensional setting where we can stress-test causal methods.
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------------
+\begin{frame}{CEMNIST: data generating process}
+
+Treatment and outcome probabilities are defined \emph{per digit class}:
+
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lccccc}
+\toprule
+Digit(s) & $p(x)$ & $e(x)=\Prob(T{=}1\mid x)$ & $\Prob(Y{=}1\mid x,T{=}0)$ & $\Prob(Y{=}1\mid x,T{=}1)$ & CATE \\
+\midrule
+9          & 0.50  & $1/9 \approx 0.11$ & 1 & 0 & $-1$ \\
+2          & 0.056 & $1.00$             & 0 & 1 & $+1$ \\
+other odd  & 0.056 & $0.50$             & 1 & 0 & $-1$ \\
+other even & 0.056 & $0.50$             & 0 & 1 & $+1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\bigskip
+\begin{columns}
+\column{0.48\textwidth}
+\textbf{Digit 9} (50\% of data): mostly untreated ($e=1/9$), but
+many \emph{untreated} nines exist in training.\\
+$\Rightarrow$ we can estimate \textbf{both} $\mu_0(9)$ and $\mu_1(9)$.\\
+CATE is \textbf{estimable}.
+
+\column{0.48\textwidth}
+\textbf{Digit 2} (5.6\% of data): \emph{always} treated ($e=1$).\\
+No untreated twos exist in training.\\
+$\Rightarrow$ $\mu_0(2)$ must be \textbf{extrapolated}.\\
+CATE is \textbf{not estimable}.
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------------
+\begin{frame}{Why propensity trimming fails on CEMNIST}
+
+\begin{columns}
+\column{0.52\textwidth}
+
+A trimmer sets thresholds $\eta$ (lower) and $1-\eta$ (upper):
+
+\medskip
+\begin{itemize}
+  \item \textbf{Upper threshold} (e.g.\ $1-\eta = 0.75$): removes units with
+        $\hat e(x) > 0.75$.
+        Digit 2 has $e=1$ $\Rightarrow$ correctly trimmed. \textcolor{green!60!black}{\checkmark}
+  \medskip
+  \item \textbf{Lower threshold} (e.g.\ $\eta = 0.05$--$0.10$): removes units
+        with $\hat e(x) < \eta$.
+        Digit 9 has $e=1/9\approx 0.11$, and an estimated propensity model
+        often pushes nines even closer to 0 ---
+        \alert{nines get trimmed too.} $\boldsymbol{\times}$
+\end{itemize}
+
+\medskip
+\textbf{Result:} the trimmer removes both twos (correct) \emph{and} nines
+(incorrect --- nines have plenty of data on both arms).
+
+\column{0.46\textwidth}
+\includegraphics[width=\textwidth,height=0.62\textheight,keepaspectratio]{fig2a_cemnist_propensity.png}
+\\\centering{\footnotesize Fig.\ 2a: estimated propensity histogram.
+Large spike at left = untreated nines (many, low propensity).
+Trimming near $\eta\approx0.10$ removes nines, not just twos.}
 \end{columns}
 \end{frame}
 
 % -------------------------------------------------------
 \begin{frame}{Core insight: non-overlap is covariate shift}
 
-\textbf{Recall:} covariate shift = test distribution differs from training distribution.
+Each arm model is trained on a \emph{different} slice of the data:
+$\mu_0$ on $p(X\mid T=0)$, \; $\mu_1$ on $p(X\mid T=1)$.
+At test time we evaluate \emph{both} at a new $x$.
 
-\bigskip
-Consider the model for the $T=1$ arm, trained on $p(X \mid T=1)$.
-
-\begin{block}{Key reframing}
-If $e(x) = \Prob(T=1 \mid x) \approx 0$, then by Bayes:
-$p(x \mid T=1) \approx 0$.\\
-So $x$ is \textbf{out-of-distribution} for the $T=1$ model.
+\medskip
+\begin{block}{Key observation}
+$e(x)\approx 0$: almost no treated unit like $x$ in training
+$\;\Rightarrow\;$ $x$ is OoD for $\mu_1$.\\[3pt]
+$e(x)\approx 1$: almost no untreated unit like $x$ in training
+$\;\Rightarrow\;$ $x$ is OoD for $\mu_0$.
 \end{block}
 
-\begin{itemize}
-  \item $e(x)\approx 0$: $\mu_1(x)$ is OoD.
-  \item $e(x)\approx 1$: $\mu_0(x)$ is OoD.
-  \item Non-overlap $\Leftrightarrow$ at least one outcome model must extrapolate.
-\end{itemize}
-
-\bigskip
+\medskip
+\begin{columns}
+\column{0.36\textwidth}
 \begin{center}
-\begin{tikzpicture}[node distance=2cm]
-  \node[conf]  (X) {$X$};
-  \node[treat, right=of X] (T) {$T$};
-  \node[outc,  right=of T] (Y) {$Y$};
+\begin{tikzpicture}
+  \node[conf]  (X) at ( 0,  1.5) {$X$};
+  \node[treat] (T) at (-1.6, 0)  {$T$};
+  \node[outc]  (Y) at ( 1.6, 0)  {$Y$};
   \draw[arrow] (X) -- (T);
   \draw[arrow] (X) -- (Y);
   \draw[arrow] (T) -- (Y);
-\end{tikzpicture}\\[4pt]
-\footnotesize Both $\mu_0$ and $\mu_1$ must be estimated; positivity ensures both have data.
+\end{tikzpicture}
 \end{center}
+\column{0.60\textwidth}
+\small
+\begin{block}{Non-overlap $=$ covariate shift}
+If overlap fails at $x$, at least one arm model is asked to predict outside its training support --- the classical covariate shift problem.\\[3pt]
+This opens the door to OoD detection tools from ML.
+\end{block}
+\end{columns}
+\end{frame}
+
+% -------------------------------------------------------
+\begin{frame}{Why does Bayes connect propensity to OoD?}
+
+We want to know: ``Is $x$ OoD for the $T=1$ model?''\\
+$\Leftrightarrow$ Is $p(x \mid T=1)$ small?
+
+\bigskip
+\begin{block}{Bayes' theorem}
+\[
+p(x \mid T=1)
+= \frac{p(T=1 \mid x)\cdot p(x)}{p(T=1)}
+= \frac{e(x)\cdot p(x)}{p(T=1)}
+\]
+\end{block}
+
+\medskip
+\begin{itemize}
+  \item $p(T=1)$ and $p(x)$ are fixed population quantities, so
+        $p(x \mid T=1) \propto e(x)$.
+  \item $e(x)\approx 0 \;\Rightarrow\; p(x\mid T=1)\approx 0 \;\Rightarrow\; x$ OoD for $\mu_1$.
+  \item $e(x)\approx 1 \;\Rightarrow\; p(x\mid T=0)\approx 0 \;\Rightarrow\; x$ OoD for $\mu_0$.
+\end{itemize}
+
+\smallskip
+\begin{block}{Why this matters}
+$p(x\mid T)$ is not directly observable, but $e(x)=p(T=1\mid x)$ \emph{is} estimable.
+Bayes makes OoD-ness \textbf{operationalizable} via the propensity score.
+\end{block}
 \end{frame}
 
 % -------------------------------------------------------
 \begin{frame}{Epistemic vs.\ aleatoric uncertainty}
 
 \begin{columns}
-\column{0.46\textwidth}
-\begin{block}{Aleatoric}
-Inherent noise in $Y$.\\[4pt]
-Cannot be reduced with more data.
-\end{block}
-\vspace{6pt}
-\begin{block}{Epistemic}
-Uncertainty from \emph{lack of data}.\\[4pt]
-Disappears as more relevant data arrives.
-\end{block}
-\vspace{6pt}
-We want to detect \textbf{epistemic} uncertainty in $\hat\tau(x)$.
-
-\column{0.52\textwidth}
-\includegraphics[width=\textwidth]{fig1c_cate_uncertainty.png}
-\\\centering{\footnotesize Fig.\ 1 (bottom): CATE uncertainty is high where at least one arm model lacks data.}
-\end{columns}
-\end{frame}
-
-% -------------------------------------------------------
-\begin{frame}{Figure 1: BNN functions detect non-overlap}
-
-\begin{columns}
 \column{0.48\textwidth}
-\includegraphics[width=\textwidth]{fig1a_bnn_t0.png}
-\\\centering{\footnotesize $T=0$ arm: BNN functions agree in-distribution,\\
-diverge where $p(x\mid T=0)\approx 0$ (right of shaded region).}
+\begin{block}{Aleatoric uncertainty}
+Inherent noise in the outcome $Y$.\\[4pt]
+\textit{Example:} even knowing the true $\mu_t(x)$ exactly, there is still
+randomness in $Y$.\\[4pt]
+\textbf{Cannot} be reduced with more training data.
+\end{block}
+
+\vspace{8pt}
+
+\begin{block}{Epistemic uncertainty}
+Uncertainty from \emph{lack of training data} at $x$.\\[4pt]
+\textit{Example:} $x$ is OoD for $\mu_1$ (digit 2 with $e=1$) --- many possible
+functions $\mu_1$ fit the training data equally well.\\[4pt]
+\textbf{Disappears} as more relevant data arrives.
+\end{block}
 
 \column{0.48\textwidth}
-\includegraphics[width=\textwidth]{fig1b_bnn_t1.png}
-\\\centering{\footnotesize $T=1$ arm: functions diverge where $p(x\mid T=1)\approx 0$\\
-(left of shaded region = low-propensity units).}
-\end{columns}
-
-\bigskip
 \begin{center}
-\textit{High variance across BNN draws = epistemic uncertainty = model says ``I don't know.''}
+We want to detect\\[6pt]
+\textbf{epistemic} uncertainty\\[6pt]
+in $\hat\tau(x) = \hat\mu_1(x)-\hat\mu_0(x)$,\\[6pt]
+and use it to decide\\
+when to withhold a recommendation.
 \end{center}
+\end{columns}
 \end{frame}
 
 % -------------------------------------------------------
-\begin{frame}{Bayesian neural networks: the tool}
+\begin{frame}{Bayesian Neural Networks (BNNs): the tool}
 
-Replace a single network $\mu_0(x;\,\omega_0)$ with a
+Replace a single fixed network $\mu_0(x;\,\omega_0)$ with a
 \emph{distribution over networks}:
 \[
-p(\omega_0 \mid \mathcal{D}) \quad \text{(posterior over weights).}
+p(\omega_0 \mid \mathcal{D}) \quad \text{(posterior over weights given training data).}
 \]
 
-Epistemic uncertainty $\approx$ variance across sampled networks:
+Epistemic uncertainty $=$ variance of predictions across BNN draws:
 \[
 U_0(x) = \mathrm{Var}_{\omega_0 \sim p(\omega_0\mid\mathcal{D})}
           \bigl[\mu_0(x;\,\omega_0)\bigr].
 \]
 
+\begin{itemize}
+  \item \textbf{In-distribution $x$:} all weight draws $\omega_0$ give similar
+        predictions $\Rightarrow$ low variance.
+  \item \textbf{OoD $x$:} different $\omega_0$ give wildly different predictions
+        $\Rightarrow$ high variance.
+\end{itemize}
+
+\bigskip
 \begin{block}{Practical approximation: MC Dropout (Gal \& Ghahramani, 2016)}
-Add dropout to each outcome head.
-Keep dropout \emph{on} at test time.
-Each stochastic forward pass $\approx$ one draw from the approximate posterior.
+Add dropout to each outcome head; keep dropout \emph{on} at test time.\\
+Each stochastic forward pass $\approx$ one sample from $p(\omega\mid\mathcal{D})$.\\
+Run $S$ passes; estimate $U(x)$ as the sample variance. Cheap.
 \end{block}
 \end{frame}
 
 % -------------------------------------------------------
-\begin{frame}{CATE uncertainty: the formal decomposition}
+\begin{frame}{Figure 1 (paper): BNN functions --- $T=0$ arm}
 
-By the law of total variance:
+\begin{center}
+\includegraphics[width=0.82\textwidth,height=0.72\textheight,keepaspectratio]{fig1a_bnn_t0.png}
+\end{center}
+\vspace{-4pt}
+{\footnotesize
+\textbf{$T=0$ arm.}
+Each curve = one BNN weight draw $\omega_0$.
+\textbf{Left region} (shaded): $p(x\mid T=0)>0$ (many untreated units seen in training)
+$\Rightarrow$ all curves agree.
+\textbf{Right} of shading: $p(x\mid T=0)\approx 0$ (OoD) $\Rightarrow$ curves diverge.
+High spread = high epistemic uncertainty $U_0(x)$.}
+\end{frame}
+
+% -------------------------------------------------------
+\begin{frame}{Figure 1 (paper): BNN functions --- $T=1$ arm}
+
+\begin{center}
+\includegraphics[width=0.82\textwidth,height=0.72\textheight,keepaspectratio]{fig1b_bnn_t1.png}
+\end{center}
+\vspace{-4pt}
+{\footnotesize
+\textbf{$T=1$ arm.}
+\textbf{Right region} (shaded): $p(x\mid T=1)>0$ $\Rightarrow$ curves agree.
+\textbf{Left} of shading: low-propensity region ($e(x)\approx 0$, i.e.\ digit-2-like units).
+The $\mu_1$ model has seen very few such units $\Rightarrow$ curves diverge, high $U_1(x)$.}
+\end{frame}
+
+% -------------------------------------------------------
+\begin{frame}{Figure 1 (paper): CATE uncertainty}
+
+\begin{center}
+\includegraphics[width=0.80\textwidth,height=0.66\textheight,keepaspectratio]{fig1c_cate_uncertainty.png}
+\end{center}
+\vspace{-2pt}
+{\footnotesize
+\textbf{Bottom panel.}
+Epistemic uncertainty in $\hat\tau(x)$ (solid black) is large
+\emph{wherever at least one arm model is OoD} ---
+non-overlap (light blue) or full covariate shift (dark blue).
+This is the signal the paper uses for rejection.}
+\end{frame}
+
+% -------------------------------------------------------
+\begin{frame}{CATE uncertainty: step-by-step derivation}
+
+For a single BNN draw $\omega = (\omega_0, \omega_1)$, define
+$\hat\tau_\omega(x) = \mu_{\omega_1}(x) - \mu_{\omega_0}(x)$.
+
+Apply the \textbf{law of total variance} conditioning on $\omega$:
+\begin{align*}
+\mathrm{Var}_{Y,\omega}[Y(1){-}Y(0)\mid x]
+&= \underbrace{\E_\omega\!\bigl[\mathrm{Var}_Y[Y(1){-}Y(0)\mid \mu_{\omega_1}(x),\mu_{\omega_0}(x)]\bigr]}_{\text{aleatoric: noise in }Y\text{ even if we knew }\omega}\\[4pt]
+&\;+\; \underbrace{\mathrm{Var}_\omega\!\bigl[\E_Y[Y(1){-}Y(0)\mid \mu_{\omega_1}(x),\mu_{\omega_0}(x)]\bigr]}_{\text{epistemic}}
+\end{align*}
+
+The epistemic term simplifies because
+$\E_Y[Y(t)\mid \mu_{\omega_t}(x)] = \mu_{\omega_t}(x)$:
 \[
-\mathrm{Var}\bigl[Y(1)-Y(0) \mid x\bigr]
-=
-\underbrace{
-  \E_\omega\!\bigl[\mathrm{Var}_{Y}[\cdots]\bigr]
-}_{\text{aleatoric}}
-+
-\underbrace{
-  \mathrm{Var}_\omega\bigl[\mu_{\omega_1}(x) - \mu_{\omega_0}(x)\bigr]
-}_{\text{epistemic in }\hat\tau(x)}
+\text{epistemic} = \mathrm{Var}_\omega[\mu_{\omega_1}(x)-\mu_{\omega_0}(x)]
+= \mathrm{Var}_\omega[\hat\tau_\omega(x)] =: U(x).
 \]
 
-The paper uses the epistemic term as its uncertainty signal:
-\[
-U(x) = \mathrm{Var}_\omega\bigl[\hat\tau(x)\bigr]
-      = \mathrm{Var}_\omega\bigl[\mu_{\omega_1}(x) - \mu_{\omega_0}(x)\bigr].
-\]
-
-\begin{itemize}
-  \item Estimated by sampling $\omega$ via MC Dropout at test time.
-  \item $U(x)$ is large when at least one arm model is OoD at $x$.
-  \item Captures both non-overlap \emph{and} input covariate shift.
-\end{itemize}
+\begin{block}{When is $U(x)$ large?}
+When different $\omega$ draws give very different $\hat\tau_\omega(x)$ ---
+exactly when $\mu_{\omega_1}$ or $\mu_{\omega_0}$ is OoD at $x$.
+\end{block}
 \end{frame}
 
 % -------------------------------------------------------
@@ -307,13 +492,13 @@ U(x) = \mathrm{Var}_\omega\bigl[\hat\tau(x)\bigr]
 \renewcommand{\arraystretch}{1.3}
 \begin{tabular}{lll}
 \toprule
-Model      & Key idea                                      & Bayesian extension \\
+Model      & Key idea                                        & Bayesian extension \\
 \midrule
-T-Learner  & Fit $\mu_0$, $\mu_1$ separately               & B-TLearner \\
-TARNet     & Shared representation, separate outcome heads & BTARNet \\
-CFRNet     & TARNet $+$ MMD regularisation for overlap     & BCFR-MMD \\
-Dragonnet  & TARNet $+$ joint propensity prediction        & BDragonnet \\
-CEVAE      & Latent confounders via VAE                    & BCEVAE $+$ neg.\ sampling \\
+T-Learner  & Fit $\mu_0$, $\mu_1$ separately                 & B-TLearner \\
+TARNet     & Shared representation, separate outcome heads   & BTARNet \\
+CFRNet     & TARNet $+$ MMD regularisation for overlap       & BCFR-MMD \\
+Dragonnet  & TARNet $+$ joint propensity prediction          & BDragonnet \\
+CEVAE      & Latent confounders via VAE                      & BCEVAE $+$ neg.\ sampling \\
 \bottomrule
 \end{tabular}
 \end{center}
@@ -343,7 +528,7 @@ Detects non-overlap and covariate shift.
 \[
 \text{reject } x \;\text{ if }\; \hat{e}(x) < \eta \;\text{ or }\; > 1{-}\eta
 \]
-Captures marginal probability only.\\
+Marginal probability only.\\
 Trims nines, keeps twos (CEMNIST).
 \end{columns}
 
@@ -358,8 +543,8 @@ on the non-rejected subset, at fixed $r_{\mathrm{rej}}$.
 \begin{center}
 \includegraphics[width=0.68\textwidth,height=0.62\textheight,keepaspectratio]{fig2b_cemnist_errorrate.png}
 \\[2pt]
-{\footnotesize Fig.\ 2b: error rate vs.\ rejection rate on CEMNIST.
-\textbf{Green} (uncertainty) $\ll$ orange/blue (propensity) across the full range.}
+{\footnotesize Fig.\ 2b: error rate vs.\ rejection rate.
+\textbf{Green dash-dot} (uncertainty) $\ll$ orange/blue (propensity) across the full range.}
 \end{center}
 \end{frame}
 
@@ -391,9 +576,9 @@ Uncertainty is \textbf{more data-efficient}: lower error at the same rejection r
 \begin{block}{What Jesson et al.\ (2020) show}
 \begin{enumerate}
   \item Non-overlap $=$ covariate shift for one outcome model.
-  \item Epistemic uncertainty in BNNs detects this, and detects
+  \item Epistemic uncertainty in BNNs detects this --- and detects
         input covariate shift as a bonus.
-  \item MC Dropout is a cheap, practical approximation.
+  \item MC Dropout makes this cheap and practical.
   \item Uncertainty-based rejection outperforms propensity trimming,
         especially when $e(x)$ and CATE estimability are decorrelated.
 \end{enumerate}
