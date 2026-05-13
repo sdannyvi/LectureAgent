@@ -81,30 +81,30 @@ They extrapolate silently and confidently into uncharted covariate space.
 
 \begin{columns}
 \column{0.52\textwidth}
-\textbf{Standard ML:} learn $f(x) \approx \E[Y \mid X=x]$.\\[8pt]
+\textbf{Standard ML:} learn $f(x) \approx \E[Y \mid X=x]$.
 
-\textbf{Causal ML:} learn \emph{two} functions simultaneously ---
-one per treatment arm:
+\medskip
+\textbf{Causal ML:} learn \emph{two} response functions:
 \[
-\mu_0(x) = \E[Y \mid X=x,\, T=0]
-\]
-\[
-\mu_1(x) = \E[Y \mid X=x,\, T=1]
+\mu_t(x) = \E[Y \mid X=x,\, T=t], \quad t\in\{0,1\}
 \]
 \[
 \hat\tau(x) = \mu_1(x) - \mu_0(x)
 \]
 
-\textbf{Key constraint:} for each unit we only ever observe
-\emph{one} arm ($T\cdot Y(1) + (1-T)\cdot Y(0)$).
+\textbf{Key constraint:} for each unit only \emph{one} arm is observed
+($T\!\cdot\! Y(1) + (1{-}T)\!\cdot\! Y(0)$).
 The other is the missing counterfactual.
+
+\medskip
+\textbf{Architecture (TARNet):} shared representation $\phi(X)$
+followed by separate $T\!=\!0$ and $T\!=\!1$ prediction heads.
 
 \column{0.44\textwidth}
 \begin{center}
 \begin{tikzpicture}[node distance=0.9cm, every node/.style={font=\small}]
   \node[obs] (x)   at (0, 0)    {$X$};
   \node[obs] (phi) at (0, 1.6)  {$\phi(X)$};
-  \node[above=0.2cm of phi, font=\tiny] {shared repr.};
   \node[obs] (m0)  at (-1.8, 3.2) {$\hat\mu_0$};
   \node[obs] (m1)  at ( 1.8, 3.2) {$\hat\mu_1$};
   \node[note] (tau) at (0, 4.8) {$\hat\tau(x)=\hat\mu_1-\hat\mu_0$};
@@ -115,9 +115,41 @@ The other is the missing counterfactual.
   \draw[arrow] (m1.north) -- (tau.south east);
   \node[font=\tiny, below=0.05cm of m0] {$T\!=\!0$ head};
   \node[font=\tiny, below=0.05cm of m1] {$T\!=\!1$ head};
+  \node[font=\tiny, right=0.1cm of phi] {shared repr.};
 \end{tikzpicture}
 \end{center}
 \end{columns}
+\end{frame}
+
+% -------------------------------------------------------
+\begin{frame}{How are causal NNs trained?}
+
+Training is \textbf{fully supervised, end-to-end} --- no unsupervised pre-training.
+
+\begin{block}{Factual loss (only the observed arm contributes per unit)}
+\[
+\mathcal{L}(\theta)
+= \sum_{i=1}^{n}
+  \Bigl[
+    T_i \cdot \ell\!\bigl(Y_i, \hat\mu_1(\phi(X_i))\bigr)
+    +
+    (1-T_i)\cdot \ell\!\bigl(Y_i, \hat\mu_0(\phi(X_i))\bigr)
+  \Bigr]
+\]
+\end{block}
+
+\begin{itemize}
+  \item Each unit activates \emph{only one} head. $\phi$ is updated by
+        backprop through the active head.
+  \item The counterfactual head gets \emph{no direct gradient signal}
+        from that unit.
+\end{itemize}
+
+\begin{alertblock}{Consequence}
+$\phi$ is useful for factual prediction --- but may not generalise to
+counterfactual prediction where no training counterparts exist in the
+opposite arm. \textbf{This is exactly the non-overlap problem.}
+\end{alertblock}
 \end{frame}
 
 % -------------------------------------------------------
@@ -238,10 +270,11 @@ other even & 0.056 & $0.50$             & 0 & 1 & $+1$ \\
 \bigskip
 \begin{columns}
 \column{0.48\textwidth}
-\textbf{Digit 9} (50\% of data): mostly untreated ($e=1/9$), but
-many \emph{untreated} nines exist in training.\\
-$\Rightarrow$ we can estimate \textbf{both} $\mu_0(9)$ and $\mu_1(9)$.\\
-CATE is \textbf{estimable}.
+\textbf{Digit 9} (50\% of data): $e=1/9$, so
+8 in 9 nines are \emph{untreated} and 1 in 9 are \emph{treated}.\\
+$\Rightarrow$ $\mu_0(9)$: estimated from many untreated nines.\\
+$\Rightarrow$ $\mu_1(9)$: estimated from some (fewer) treated nines.\\
+\textbf{Both arms have data.} CATE is \textbf{estimable}.
 
 \column{0.48\textwidth}
 \textbf{Digit 2} (5.6\% of data): \emph{always} treated ($e=1$).\\
@@ -349,6 +382,33 @@ p(x \mid T=1)
 $p(x\mid T)$ is not directly observable, but $e(x)=p(T=1\mid x)$ \emph{is} estimable.
 Bayes makes OoD-ness \textbf{operationalizable} via the propensity score.
 \end{block}
+\end{frame}
+
+% -------------------------------------------------------
+\begin{frame}{The problem and the paper's answer}
+
+\begin{block}{Problem}
+Neural CATE estimators extrapolate silently when positivity fails.
+Propensity trimming uses a scalar $e(x)$ to decide estimability in a
+high-dimensional space --- and gets it wrong (CEMNIST: removes estimable
+nines, keeps non-estimable twos).
+\end{block}
+
+\smallskip
+\begin{block}{Core insight}
+Non-overlap $\equiv$ covariate shift for one arm model:\\[2pt]
+$e(x)\approx 0 \;\Rightarrow\; x$ OoD for $\mu_1$
+\quad
+$e(x)\approx 1 \;\Rightarrow\; x$ OoD for $\mu_0$
+\end{block}
+
+\smallskip
+\begin{block}{Solution}
+Add epistemic uncertainty to the causal model (BNN / MC Dropout).\\
+Uncertainty $U(x)$ is high exactly where OoD-ness occurs.\\
+\textbf{Reject on $U(x)$, not on $\hat e(x)$.}
+\end{block}
+
 \end{frame}
 
 % -------------------------------------------------------
@@ -511,30 +571,42 @@ $\Rightarrow$ get $U(x)$ for free, with minimal code changes.
 % -------------------------------------------------------
 \begin{frame}{Rejection policy: thresholding on uncertainty}
 
-\textbf{Decision rule:} given rejection budget $r_{\mathrm{rej}}$,
-withhold recommendation for the $r_{\mathrm{rej}}$ fraction with highest $U(x)$.
+\textbf{Setting:} given budget $r_{\mathrm{rej}}$, withhold the
+$r_{\mathrm{rej}}$ fraction with the worst signal.
+\textbf{Metric:} error rate and $\sqrt{\mathrm{PEHE}}$ on non-rejected units.
 
-\bigskip
-\begin{columns}
-\column{0.46\textwidth}
-\textbf{Uncertainty policy}
-\[
-\text{reject } x \;\text{ if }\; U(x) > \kappa
-\]
-Detects non-overlap and covariate shift.
-
-\column{0.46\textwidth}
-\textbf{Propensity trimming}
-\[
-\text{reject } x \;\text{ if }\; \hat{e}(x) < \eta \;\text{ or }\; > 1{-}\eta
-\]
-Marginal probability only.\\
-Trims nines, keeps twos (CEMNIST).
-\end{columns}
-
-\bigskip
-\textbf{Metric:} recommendation error rate and $\sqrt{\mathrm{PEHE}}$
-on the non-rejected subset, at fixed $r_{\mathrm{rej}}$.
+\medskip
+\begin{center}
+\small
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{p{4.2cm}cc}
+\toprule
+ & \textbf{Uncertainty rejection} & \textbf{Propensity trimming} \\
+\midrule
+Rejection rule
+  & $U(x) > \kappa$
+  & $\hat e(x) < \eta$ or $> 1{-}\eta$ \\
+Signal type
+  & model-based, arm-specific
+  & marginal probability \\
+Detects non-overlap
+  & \textcolor{green!60!black}{Yes, arm-by-arm}
+  & \textcolor{green!60!black}{Yes} \\
+Detects covariate shift
+  & \textcolor{green!60!black}{Yes}
+  & \alert{No} \\
+CEMNIST: keeps twos?
+  & \alert{No} (high $U$, rejected)
+  & \alert{No} (high $\hat e$, rejected) \\
+CEMNIST: keeps nines?
+  & \textcolor{green!60!black}{Yes} (low $U$)
+  & \alert{No} (low $\hat e$, trimmed away) \\
+Principled threshold
+  & No closed-form rule
+  & Caliendo \& Kopeinig \\
+\bottomrule
+\end{tabular}
+\end{center}
 \end{frame}
 
 % -------------------------------------------------------
