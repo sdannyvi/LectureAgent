@@ -810,27 +810,6 @@ Quince (Jesson 2021) & CATE bound & Valid & BNN only \\
 \textbf{Practical caveat:} B-Learner(NN,NN) and \textit{Quince} perform similarly in Fig.~3. Theoretical superiority does not always translate to empirical gains on small datasets.
 \end{frame}
 
-% ----- DISCUSSION -----
-
-\begin{frame}{Discussion questions}
-
-\begin{enumerate}
-  \item At $\log\Lambda=0.6$, about half of 401(k) CATE lower bounds turn negative. \textbf{Does this mean the 401(k) effect is confounded?} What additional evidence would distinguish confounding from sampling variability?
-
-  \medskip
-  \item The quasi-oracle property guarantees B-Learner converges at the oracle rate. \textbf{Does this mean B-Learner is safe to use on 200 observations?} What does the asymptotic constant hide?
-
-  \medskip
-  \item Suppose you use bounds $[\hat\tau^-(x), \hat\tau^+(x)]$ to decide who gets a treatment. \textbf{How would you operationalize the decision?} What role does $\Lambda$ play in the decision rule?
-
-  \medskip
-  \item ERM in Stage 2 gives average-valid bounds, not pointwise-valid ones. \textbf{When does this matter?} Can you give a decision-making scenario where average validity is sufficient?
-
-  \medskip
-  \item At $\Lambda=1$, B-Learner reduces to DR-Learner. \textbf{What does this tell us about unconfoundedness?} Is it the same as saying the identified set is a single point?
-\end{enumerate}
-\end{frame}
-
 % ----- TAKE-AWAY -----
 
 \begin{frame}{Take-away}
