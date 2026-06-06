@@ -682,8 +682,6 @@ Mixing NN Stage 1 with RF Stage 2 also works well --- a unique advantage of the 
   \item $\tau^-(x)>0 \Rightarrow$ effect \textbf{robust} at this confounding level.
   \item $\tau^-(x)\leq 0 \Rightarrow$ data do not rule out zero/negative effect.
 \end{itemize}
-\textit{E.g.} $[2{,}000,\,8{,}000]\!\Rightarrow\!$robust;\;
-$[-1{,}000,\,7{,}000]\!\Rightarrow\!$uncertain.
 \end{block}}
 
 \column{0.54\textwidth}
@@ -701,32 +699,6 @@ At $\log\Lambda\approx 0.5$: ${\sim}50\%$ of lower bounds turn negative.\\
 \textbf{Breakdown question:} is $\log\Lambda=0.5$ plausible here?
 \end{block}
 \end{columns}
-\end{frame}
-
-% ----- COURSE CONNECTION -----
-
-\begin{frame}{Connection to course}
-
-{\scriptsize\hyphenpenalty=10000\exhyphenpenalty=10000
-\begin{tabular}{p{2.9cm}p{2.9cm}p{4.4cm}}
-\toprule
-\textbf{Concept} & \textbf{B-Learner} & \textbf{Course context} \\
-\midrule
-Unconfoundedness & Relaxed via MSM & Core assumption: backdoor, IPTW \\
-Sensitivity $\Lambda$ & Generalizes Rosenbaum $\Gamma$ & Module 4: sensitivity analysis \\
-DR-Learner & Extended to CATE bounds & Module 10: CATE meta-learners \\
-Neyman orthogonality & Pseudo-outcome (PO) & Double ML / DML framework \\
-Propensity score & Stage 1 nuisance & Modules 3, 10 \\
-CVaR / tail risk & New tool in causal context & Borrowed from financial statistics \\
-Partial identification & Bounds, not points & Identified set, not a single value \\
-\bottomrule
-\end{tabular}}
-\normalsize
-
-\smallskip
-\begin{block}{Key reframing}
-\small B-Learner turns sensitivity analysis from a global ATE robustness check into a full CATE estimation problem with quasi-oracle rates, double robustness, and flexible learners.
-\end{block}
 \end{frame}
 
 % ----- COMMON MISTAKE -----
